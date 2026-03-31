@@ -609,6 +609,178 @@ public sealed class MainlayerClientTests
     }
 
     // -------------------------------------------------------------------------
+    // Discover
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Discover_SearchAsync_ReturnsResources()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var client = BuildClient(_ => Json(new[]
+        {
+            new { id = "res_public_001", slug = "weather-api", name = "Weather API", description = "Real-time weather", type = "api", fee_model = "pay_per_call", price_usdc = 0.01m, created_at = now, updated_at = now }
+        }));
+
+        var results = await client.Discover.SearchAsync("weather");
+
+        Assert.Single(results);
+        Assert.Equal("res_public_001", results[0].Id);
+        Assert.Equal("weather-api", results[0].Slug);
+    }
+
+    [Fact]
+    public async Task Discover_QueryAsync_WithFilters_ReturnsFiltered()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var client = BuildClient(_ => Json(Array.Empty<object>()));
+
+        var results = await client.Discover.QueryAsync(new DiscoverQuery
+        {
+            Query = "api",
+            ResourceType = ResourceType.Api,
+            FeeModel = FeeModel.PayPerCall,
+            Limit = 10,
+            Offset = 0
+        });
+
+        Assert.Empty(results);
+    }
+
+    // -------------------------------------------------------------------------
+    // Entitlements
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Entitlements_CheckAsync_HasAccess_ReturnsTrue()
+    {
+        var client = BuildClient(_ => Json(new { has_access = true, expires_at = (DateTimeOffset?)null, credits_remaining = (int?)null }));
+
+        var entitlement = await client.Entitlements.CheckAsync("res_abc123", "wallet_xyz");
+
+        Assert.True(entitlement.HasAccess);
+        Assert.Null(entitlement.ExpiresAt);
+        Assert.Null(entitlement.CreditsRemaining);
+    }
+
+    [Fact]
+    public async Task Entitlements_CheckAsync_NoAccess_ReturnsFalse()
+    {
+        var client = BuildClient(_ => Json(new { has_access = false, expires_at = (DateTimeOffset?)null, credits_remaining = (int?)null }));
+
+        var entitlement = await client.Entitlements.CheckAsync("res_abc123", "wallet_xyz");
+
+        Assert.False(entitlement.HasAccess);
+    }
+
+    [Fact]
+    public async Task Entitlements_CheckAsync_WithExpiration_ReturnsExpiresAt()
+    {
+        var expiration = DateTimeOffset.UtcNow.AddDays(30);
+        var client = BuildClient(_ => Json(new { has_access = true, expires_at = expiration, credits_remaining = (int?)null }));
+
+        var entitlement = await client.Entitlements.CheckAsync("res_abc123", "wallet_xyz");
+
+        Assert.True(entitlement.HasAccess);
+        Assert.NotNull(entitlement.ExpiresAt);
+        Assert.Equal(expiration.Date, entitlement.ExpiresAt?.Date);
+    }
+
+    [Fact]
+    public async Task Entitlements_CheckAsync_PayPerCall_ReturnsCredits()
+    {
+        var client = BuildClient(_ => Json(new { has_access = true, expires_at = (DateTimeOffset?)null, credits_remaining = 500 }));
+
+        var entitlement = await client.Entitlements.CheckAsync("res_abc123", "wallet_xyz");
+
+        Assert.True(entitlement.HasAccess);
+        Assert.Equal(500, entitlement.CreditsRemaining);
+    }
+
+    // -------------------------------------------------------------------------
+    // Payments
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Payments_CreateAsync_ReturnsPayment()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var client = BuildClient(_ => Json(new { id = "pay_001", resource_id = "res_abc123", payer_wallet = "wallet_xyz", amount_usdc = 0.01m, status = "confirmed", created_at = now, updated_at = now }));
+
+        var payment = await client.Payments.CreateAsync(new CreatePaymentRequest
+        {
+            ResourceId = "res_abc123",
+            PayerWallet = "wallet_xyz"
+        });
+
+        Assert.Equal("pay_001", payment.Id);
+        Assert.Equal("res_abc123", payment.ResourceId);
+        Assert.Equal(0.01m, payment.AmountUsdc);
+    }
+
+    [Fact]
+    public async Task Payments_ListAsync_ReturnsPayments()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var client = BuildClient(_ => Json(new[]
+        {
+            new { id = "pay_001", resource_id = "res_abc123", payer_wallet = "wallet_xyz", amount_usdc = 0.01m, status = "confirmed", created_at = now, updated_at = now }
+        }));
+
+        var payments = await client.Payments.ListAsync();
+
+        Assert.Single(payments);
+        Assert.Equal("pay_001", payments[0].Id);
+    }
+
+    // -------------------------------------------------------------------------
+    // Analytics
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Analytics_GetAsync_ReturnsStats()
+    {
+        var client = BuildClient(_ => Json(new { total_payments = 42, total_revenue_usdc = 42.00m, unique_payers = 10, by_resource = Array.Empty<object>() }));
+
+        var stats = await client.Analytics.GetAsync();
+
+        Assert.Equal(42, stats.TotalPayments);
+        Assert.Equal(42.00m, stats.TotalRevenueUsdc);
+        Assert.Equal(10, stats.UniquePayers);
+    }
+
+    // -------------------------------------------------------------------------
+    // API Keys
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task ApiKeys_ListAsync_ReturnsKeys()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var client = BuildClient(_ => Json(new[]
+        {
+            new { id = "key_001", name = "Production", key = (string?)null, created_at = now }
+        }));
+
+        var keys = await client.ApiKeys.ListAsync();
+
+        Assert.Single(keys);
+        Assert.Equal("key_001", keys[0].Id);
+        Assert.Equal("Production", keys[0].Name);
+    }
+
+    [Fact]
+    public async Task ApiKeys_CreateAsync_ReturnsNewKey()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var client = BuildClient(_ => Json(new { id = "key_new", name = "Test Key", key = "ml_secret_key_123", created_at = now }));
+
+        var newKey = await client.ApiKeys.CreateAsync(new CreateApiKeyRequest { Name = "Test Key" });
+
+        Assert.Equal("key_new", newKey.Id);
+        Assert.Equal("ml_secret_key_123", newKey.Key);
+    }
+
+    // -------------------------------------------------------------------------
     // Stub handler
     // -------------------------------------------------------------------------
 
