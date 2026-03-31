@@ -18,9 +18,9 @@ public sealed class MainlayerClientOptions
 
     /// <summary>
     /// Gets or sets the base URL of the Mainlayer API.
-    /// Defaults to <c>https://api.mainlayer.xyz</c>.
+    /// Defaults to <c>https://api.mainlayer.fr</c>.
     /// </summary>
-    public Uri BaseUrl { get; set; } = new Uri("https://api.mainlayer.xyz");
+    public Uri BaseUrl { get; set; } = new Uri("https://api.mainlayer.fr");
 
     /// <summary>
     /// Gets or sets the maximum number of retry attempts for transient failures (429 / 5xx).

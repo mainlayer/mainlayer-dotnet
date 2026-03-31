@@ -1,6 +1,6 @@
 # Mainlayer .NET SDK
 
-Official .NET SDK for [Mainlayer](https://mainlayer.xyz) — payment infrastructure for AI agents.
+Official .NET SDK for [Mainlayer](https://mainlayer.fr) — payment infrastructure for AI agents.
 
 ## Installation
 
@@ -75,7 +75,7 @@ app.MapGet("/check", async (MainlayerClient mainlayer, string resourceId, string
 var client = new MainlayerClient(new MainlayerClientOptions
 {
     ApiKey         = "ml_your_api_key",
-    BaseUrl        = new Uri("https://api.mainlayer.xyz"), // default
+    BaseUrl        = new Uri("https://api.mainlayer.fr"), // default
     MaxRetries     = 3,                                    // default
     RetryBaseDelay = TimeSpan.FromMilliseconds(500),       // default
     Timeout        = TimeSpan.FromSeconds(30)              // default
